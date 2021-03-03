@@ -1,0 +1,8 @@
+{
+  "name": "MtG Life Counter",
+  "short_name": "MtGLifeCounter",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000",
+  "description": "A simple MtG Life Counter PWA."
+}
