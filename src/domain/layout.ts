@@ -179,3 +179,23 @@ export const seatRotation = (layout: Layout, seatIndex: number): Rotation =>
 
 export const isSideways = (rotation: Rotation): boolean =>
   rotation === 90 || rotation === 270
+
+export type Edges = Readonly<{ top: boolean; right: boolean; bottom: boolean; left: boolean }>
+
+/** Which screen edges a seat's grid area reaches. Those edges sit under the
+ *  display's rounded corners and sensor housing, so the seat bleeds to them
+ *  and keeps its contents inside the safe area there. */
+export const seatEdges = (layout: Layout, seatIndex: number): Edges => {
+  const grid = layout.areas.map(row => row.trim().split(/\s+/))
+  const maybeArea = Option.map(Array.get(layout.seats, seatIndex), seat => seat.area)
+  if (Option.isNone(maybeArea) || grid.length === 0) {
+    return { top: false, right: false, bottom: false, left: false }
+  }
+  const area = maybeArea.value
+  return {
+    top: grid[0]!.includes(area),
+    bottom: grid[grid.length - 1]!.includes(area),
+    left: grid.some(row => row[0] === area),
+    right: grid.some(row => row[row.length - 1] === area),
+  }
+}

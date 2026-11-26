@@ -34,6 +34,31 @@ test('tapping a zone changes life by one', async ({ page }) => {
   await expect(life(page, 'p2')).toHaveText('39')
 })
 
+test('tapping the life total opens that player\'s dialog', async ({ page }) => {
+  await life(page, 'p2').tap()
+  const dialog = page.getByRole('dialog', { name: /Player 2/ })
+  await expect(dialog).toBeVisible()
+  await expect(life(page, 'p2')).toHaveText('40')
+})
+
+test('either side of the life total still changes life', async ({ page }) => {
+  const number = await life(page, 'p1').boundingBox()
+  if (!number) throw new Error('life total not visible')
+  const x = number.x + number.width / 2
+  // p1 is turned 90° to face the left edge: their right (plus) is the
+  // screen's down, their left (minus) is up.
+  await page.touchscreen.tap(x, number.y + number.height + 12)
+  await page.touchscreen.tap(x, number.y + number.height + 12)
+  await page.touchscreen.tap(x, number.y - 12)
+  await expect(life(page, 'p1')).toHaveText('41')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('the life total is the only way into a player\'s settings', async ({ page }) => {
+  // minus, plus and the life total
+  await expect(seat(page, 'p1').getByRole('button')).toHaveCount(3)
+})
+
 test('holding a zone steps by ten', async ({ page }) => {
   const box = await zone(page, 'p3', 'minus').boundingBox()
   if (!box) throw new Error('zone not visible')
@@ -47,7 +72,7 @@ test('holding a zone steps by ten', async ({ page }) => {
 })
 
 test('commander damage from the player dialog costs life and shows a chip', async ({ page }) => {
-  await seat(page, 'p2').getByRole('button', { name: /commander damage, counters/ }).click()
+  await life(page, 'p2').click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   const fromP1 = dialog.getByRole('group', { name: 'From Player 1' })
@@ -58,12 +83,12 @@ test('commander damage from the player dialog costs life and shows a chip', asyn
   await expect(dialog).toBeHidden()
   await expect(life(page, 'p2')).toHaveText('37')
   await expect(
-    seat(page, 'p2').getByRole('button', { name: /3 commander damage from Player 1/ }),
+    seat(page, 'p2').getByRole('group', { name: /3 commander damage from Player 1/ }),
   ).toBeVisible()
 })
 
 test('players can rename themselves and pick a color', async ({ page }) => {
-  await seat(page, 'p1').getByRole('button', { name: /commander damage, counters/ }).click()
+  await life(page, 'p1').click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Name' }).fill('Ari')
   await dialog.getByRole('button', { name: 'Teal' }).click()
@@ -110,7 +135,7 @@ test.describe('accessibility', () => {
   })
 
   test('the player dialog has no axe violations', async ({ page }) => {
-    await seat(page, 'p1').getByRole('button', { name: /commander damage, counters/ }).click()
+    await life(page, 'p1').click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.waitForTimeout(300)
     await expectNoA11yViolations(page)

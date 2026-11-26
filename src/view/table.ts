@@ -17,7 +17,7 @@ import {
   findPlayer,
   lossReason,
 } from '../domain/game'
-import { type Rotation, isSideways, seatRotation } from '../domain/layout'
+import { type Edges, type Rotation, isSideways, seatEdges, seatRotation } from '../domain/layout'
 import { cn } from '../ui/cn'
 import { icon } from '../ui/icon'
 import type { IconName } from '../ui/icons.generated'
@@ -192,6 +192,24 @@ const panelContent = (
         h.span(
           [
             h.AriaHidden(true),
+            h.DataAttribute('testid', `name-${player.id}`),
+            h.Class(
+              cn(
+                'mb-[2cqmin] inline-flex max-w-[80%] items-center gap-1.5 rounded-full px-3 py-1.5',
+                'text-[clamp(0.75rem,5cqmin,1.15rem)] font-bold',
+                ink === 'light' ? 'bg-black/25' : 'bg-white/40',
+              ),
+            ),
+          ],
+          [
+            isMonarch ? icon('crown', 'size-[1.2em] drop-shadow') : h.empty,
+            hasInitiative ? icon('building-castle', 'size-[1.2em] drop-shadow') : h.empty,
+            h.span([h.Class('truncate')], [player.name]),
+          ],
+        ),
+        h.span(
+          [
+            h.AriaHidden(true),
             h.Class(
               cn(
                 'text-[clamp(1rem,11cqmin,3.5rem)] font-extrabold tabular-nums leading-none drop-shadow transition duration-300 ease-out',
@@ -208,8 +226,18 @@ const panelContent = (
             }),
           ],
         ),
-        h.div(
-          [h.AriaLive('polite'), h.Class('flex flex-col items-center')],
+        // Tapping the total opens the player's settings; either side of it
+        // is still a life zone.
+        h.button(
+          [
+            h.Type('button'),
+            h.AriaLabel(`${player.life} life. ${player.name}: commander damage, counters and color`),
+            h.AriaHasPopup('dialog'),
+            h.Class(
+              'pointer-events-auto rounded-[8cqmin] px-[3cqmin] transition active:scale-95 focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-current',
+            ),
+            h.OnClick(Message.ClickedPlayer({ playerId: player.id })),
+          ],
           [
             h.keyed('span')(
               `${player.id}-life-${player.life}`,
@@ -223,9 +251,9 @@ const panelContent = (
               ],
               [String(player.life)],
             ),
-            h.span([h.Class('sr-only')], [`${player.name}: ${player.life} life`]),
           ],
         ),
+        h.span([h.AriaLive('polite'), h.Class('sr-only')], [`${player.name}: ${player.life} life`]),
         Option.match(maybeLoss, {
           onNone: () => h.empty,
           onSome: reason =>
@@ -241,78 +269,28 @@ const panelContent = (
       ],
     ),
 
-    // Name pill
-    h.div(
-      [
-        h.Class(
-          'pointer-events-none absolute inset-x-0 top-0 flex justify-center p-[max(0.4rem,2.5cqmin)]',
-        ),
-      ],
-      [
-        h.button(
-          [
-            h.Type('button'),
-            h.AriaLabel(`${player.name}: commander damage, counters and color`),
-            h.AriaHasPopup('dialog'),
-            h.Class(
-              cn(
-                'pointer-events-auto inline-flex max-w-[80%] items-center gap-1.5 rounded-full px-3 py-1.5',
-                'text-[clamp(0.75rem,5cqmin,1.15rem)] font-bold transition active:scale-95',
-                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current',
-                ink === 'light' ? 'bg-black/25' : 'bg-white/40',
-              ),
-            ),
-            h.OnClick(Message.ClickedPlayer({ playerId: player.id })),
-          ],
-          [
-            isMonarch ? icon('crown', 'size-[1.2em] drop-shadow') : h.empty,
-            hasInitiative ? icon('building-castle', 'size-[1.2em] drop-shadow') : h.empty,
-            h.span([h.Class('truncate')], [player.name]),
-            icon('pencil', 'size-[1em] opacity-60'),
-          ],
-        ),
-      ],
-    ),
-
     // Status chips
-    h.div(
-      [
-        h.Class(
-          'pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-1 p-[max(0.4rem,2.5cqmin)] text-[clamp(0.7rem,4.5cqmin,1rem)]',
-        ),
-      ],
-      [
-        h.button(
+    chips.length === 0
+      ? h.empty
+      : h.div(
           [
-            h.Type('button'),
-            h.AriaLabel(
-              chips.length === 0
-                ? `Open counters for ${player.name}`
-                : `Counters for ${player.name}: ${chips.map(({ label }) => label).join(', ')}`,
-            ),
-            h.AriaHasPopup('dialog'),
+            h.Role('group'),
+            h.AriaLabel(`${player.name}: ${chips.map(({ label }) => label).join(', ')}`),
             h.Class(
-              'pointer-events-auto flex flex-wrap items-center justify-center gap-1 rounded-full p-0.5 transition active:scale-95 focus-visible:outline-2 focus-visible:outline-current',
+              'pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-1 p-[max(0.4rem,2.5cqmin)] text-[clamp(0.7rem,4.5cqmin,1rem)]',
             ),
-            h.OnClick(Message.ClickedPlayer({ playerId: player.id })),
           ],
-          chips.length === 0
-            ? [
-                h.span(
-                  [h.Class(chip({ ink }))],
-                  [icon('sword', 'size-[1.1em]'), icon('droplet', 'size-[1.1em]')],
-                ),
-              ]
-            : chips.map(item =>
-                h.keyed('span')(
-                  item.key,
-                  [h.Class(cn(chip({ ink, isDanger: item.isDanger }), 'animate-chip-in'))],
-                  item.content,
-                ),
-              ),
+          chips.map(item =>
+            h.keyed('span')(
+              item.key,
+              [
+                h.AriaHidden(true),
+                h.Class(cn(chip({ ink, isDanger: item.isDanger }), 'animate-chip-in')),
+              ],
+              item.content,
+            ),
+          ),
         ),
-      ],
-    ),
   ]
 }
 
@@ -420,14 +398,43 @@ const highRollOverlay = (
     },
   })
 
+const CORNER = '1.6rem'
+
+/** Round a corner only where it meets another seat; corners on the screen
+ *  edge are left square so the display's own curve shapes them. */
+const cornerRadii = (edges: Edges) => ({
+  borderTopLeftRadius: edges.top && edges.left ? '0' : CORNER,
+  borderTopRightRadius: edges.top && edges.right ? '0' : CORNER,
+  borderBottomRightRadius: edges.bottom && edges.right ? '0' : CORNER,
+  borderBottomLeftRadius: edges.bottom && edges.left ? '0' : CORNER,
+})
+
+const safeInset = (edges: Edges) => ({
+  top: edges.top ? 'env(safe-area-inset-top, 0px)' : '0px',
+  right: edges.right ? 'env(safe-area-inset-right, 0px)' : '0px',
+  bottom: edges.bottom ? 'env(safe-area-inset-bottom, 0px)' : '0px',
+  left: edges.left ? 'env(safe-area-inset-left, 0px)' : '0px',
+})
+
+/** A box centred in its container and turned to face the player, sized
+ *  with the container's axes swapped when sideways. */
+const facing = (rotation: Rotation) => {
+  const sideways = isSideways(rotation)
+  return {
+    width: sideways ? '100cqh' : '100cqw',
+    height: sideways ? '100cqw' : '100cqh',
+    transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+  }
+}
+
 const seatView = (
   model: Model,
   player: Player,
   seatArea: string,
   rotation: Rotation,
+  edges: Edges,
   h: HtmlBuilder<Message>,
 ): Html => {
-  const sideways = isSideways(rotation)
   const ink = inkFor(player.color)
   const isOut = Option.isSome(lossReason(player))
   return h.keyed('section')(
@@ -435,30 +442,44 @@ const seatView = (
     [
       h.AriaLabel(player.name),
       h.DataAttribute('testid', `seat-${player.id}`),
-      h.Class('seat relative overflow-hidden rounded-[1.6rem] [container-type:size]'),
+      h.Class(cn('seat relative overflow-hidden [container-type:size]', isOut && 'is-out')),
       h.Style({
         gridArea: seatArea,
         '--player': player.color,
         viewTransitionName: `seat-${player.id}`,
+        ...cornerRadii(edges),
       }),
     ],
     [
+      // The surface fills the whole seat, under the status bar and into the
+      // screen corners.
       h.div(
         [
-          h.Class(
-            cn(
-              'player-surface absolute left-1/2 top-1/2 select-none [container-type:size]',
-              ink === 'light' ? 'text-white' : 'text-zinc-950',
-              isOut && 'is-out',
-            ),
-          ),
-          h.Style({
-            width: sideways ? '100cqh' : '100cqw',
-            height: sideways ? '100cqw' : '100cqh',
-            transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-          }),
+          h.Class('player-surface absolute left-1/2 top-1/2 [container-type:size]'),
+          h.Style(facing(rotation)),
         ],
-        [...panelContent(model, player, h), highRollOverlay(model, player, h)],
+        [highRollOverlay(model, player, h)],
+      ),
+      // The controls stay inside the safe area.
+      h.div(
+        [
+          h.Class('absolute [container-type:size]'),
+          h.Style(safeInset(edges)),
+        ],
+        [
+          h.div(
+            [
+              h.Class(
+                cn(
+                  'absolute left-1/2 top-1/2 select-none [container-type:size]',
+                  ink === 'light' ? 'text-white' : 'text-zinc-950',
+                ),
+              ),
+              h.Style(facing(rotation)),
+            ],
+            panelContent(model, player, h),
+          ),
+        ],
       ),
     ],
   )
@@ -490,6 +511,7 @@ export const tableView = (model: Model, h: HtmlBuilder<Message>): Html => {
             Option.getOrElse(() => 'a'),
           ),
           seatRotation(layout, index),
+          seatEdges(layout, index),
           h,
         ),
       ),

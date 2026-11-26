@@ -35,11 +35,14 @@
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
   }
-  /* iOS 26 home-screen apps start with a viewport that is short by the
-     status bar whenever the document is no taller than it, leaving a dead
-     black band at the bottom. Growing the document (not a fixed element,
-     which WebKit still clips) makes the viewport expand to the screen. */
-  @media (display-mode: standalone) {
+  /* iOS home-screen apps with a translucent status bar get a viewport that is
+     short by the status bar (WebKit bug 301108), leaving a dead strip at the
+     bottom that nothing can paint. Making the document taller than that
+     viewport makes WebKit hand over the full screen; the lvh cap keeps the
+     page from scrolling once it does. iOS reports the manifest's display
+     mode, which is fullscreen, so standalone alone never matches.
+     Verified in the iOS 27 simulator on an iPhone 17. */
+  @media (display-mode: fullscreen), (display-mode: standalone) {
     html {
       min-height: min(100lvh, calc(100% + env(safe-area-inset-top, 0px)));
     }
@@ -55,8 +58,9 @@
 /* TABLE */
 
 .table-grid {
-  padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right))
-    max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  /* Seats run to the screen edges; each keeps its own controls inside the
+     safe area (see seatEdges). */
+  padding: 0;
   /* Taps and holds are the only gestures on the table: no scroll, no
      double-tap zoom, no pinch. Dialogs stay zoomable. */
   touch-action: none;
@@ -78,7 +82,7 @@
   transition: filter 500ms ease, background 400ms ease;
 }
 
-.player-surface.is-out {
+.seat.is-out {
   filter: grayscale(0.85) brightness(0.6);
 }
 
