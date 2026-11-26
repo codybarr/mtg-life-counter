@@ -26,6 +26,23 @@ import { COUNTER_META, dialogPlayer, rotationForPlayer } from './table'
 
 // SHELL
 
+/** Room around a dialog: the safe area plus a margin, so its top clears the
+ *  status bar (and the gradient iOS draws under it). */
+const GUTTER = {
+  top: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+  right: 'calc(env(safe-area-inset-right, 0px) + 0.75rem)',
+  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+  left: 'calc(env(safe-area-inset-left, 0px) + 0.75rem)',
+}
+const AVAILABLE_HEIGHT = `calc(100dvh - ${GUTTER.top} - ${GUTTER.bottom})`
+const AVAILABLE_WIDTH = `calc(100dvw - ${GUTTER.left} - ${GUTTER.right})`
+
+/** The panel's size before it is turned: a sideways panel swaps axes. */
+const panelSize = (rotation: Rotation) =>
+  isSideways(rotation)
+    ? { width: `min(30rem, ${AVAILABLE_HEIGHT})`, maxHeight: AVAILABLE_WIDTH }
+    : { width: `min(30rem, ${AVAILABLE_WIDTH})`, maxHeight: AVAILABLE_HEIGHT }
+
 const dialogShell = (
   render: Dialog.RenderInfo,
   rotation: Rotation,
@@ -36,8 +53,14 @@ const dialogShell = (
     [
       ...render.dialog,
       h.Class(
-        'm-0 h-dvh max-h-none w-dvw max-w-none overflow-hidden bg-transparent p-0 text-white open:flex items-center justify-center',
+        'm-0 box-border h-dvh max-h-none w-dvw max-w-none overflow-hidden bg-transparent text-white open:flex items-center justify-center',
       ),
+      h.Style({
+        paddingTop: GUTTER.top,
+        paddingRight: GUTTER.right,
+        paddingBottom: GUTTER.bottom,
+        paddingLeft: GUTTER.left,
+      }),
     ],
     render.isVisible
       ? [
@@ -60,11 +83,9 @@ const dialogShell = (
                     cn(
                       'flex flex-col gap-5 overflow-y-auto overscroll-contain rounded-[1.75rem] bg-zinc-900/95 p-5 shadow-2xl ring-1 ring-white/10',
                       'transition duration-200 ease-out data-[closed]:translate-y-3 data-[closed]:scale-95 data-[closed]:opacity-0',
-                      isSideways(rotation)
-                        ? 'w-[min(30rem,92dvh)] max-h-[92dvw]'
-                        : 'w-[min(30rem,94dvw)] max-h-[90dvh]',
                     ),
                   ),
+                  h.Style(panelSize(rotation)),
                 ],
                 content(),
               ),
@@ -333,11 +354,13 @@ const commanderDamageSection = (
 ): Html => {
   const opponents = opponentsOf(model.game, player.id)
   return section(
-    `Commander damage taken (lethal at ${COMMANDER_DAMAGE_LIMIT})`,
+    'Commander damage taken',
     [
       h.p(
         [h.Class('-mt-1 text-xs text-white/50')],
-        ['Also subtracts from life. Removing it gives the life back.'],
+        [
+          `Lethal at ${COMMANDER_DAMAGE_LIMIT}. Also subtracts from life; removing it gives the life back.`,
+        ],
       ),
       ...Array.flatMap(opponents, source =>
         commanderSlotsOf(source).map(slot => {

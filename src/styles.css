@@ -75,9 +75,10 @@
 }
 
 .player-surface {
+  /* Only a soft highlight toward the middle of the table: nothing darkens
+     the edge of the screen, so the top of the display stays crisp. */
   background:
     radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--player), white 18%) 0%, transparent 60%),
-    radial-gradient(90% 70% at 50% 110%, color-mix(in oklab, var(--player), black 40%) 0%, transparent 70%),
     var(--player);
   transition: filter 500ms ease, background 400ms ease;
 }
@@ -108,14 +109,22 @@
 }
 
 /* HIGH ROLL
-   The die tumbles for 1200ms (HIGH_ROLL_REVEAL_MS) while its face flickers
-   through numbers, then lands on the real roll. The winner's panel lights up
-   and everyone else's dims. */
+   The die turns once over 1200ms (HIGH_ROLL_REVEAL_MS) while its face
+   flickers through a few numbers, then settles on the real roll. The
+   winner's seat gets a ring that pulses twice; everyone else's die dims. */
 
 @property --roll {
   syntax: '<integer>';
   inherits: false;
   initial-value: 1;
+}
+
+/* While rolling, the seat goes dark and the panel underneath is hidden. */
+.seat.is-rolling {
+  background: color-mix(in oklab, var(--player), black 80%);
+}
+.seat.is-rolling .player-surface {
+  visibility: hidden;
 }
 
 .high-roll {
@@ -134,10 +143,9 @@
   stroke-linejoin: round;
 }
 @keyframes d20-tumble {
-  0% { opacity: 0; transform: translateY(-30%) rotate(calc(var(--spin) * -900deg)) scale(0.35); }
-  55% { opacity: 1; transform: translateY(4%) rotate(calc(var(--spin) * 25deg)) scale(1.08); }
-  75% { transform: translateY(-2%) rotate(calc(var(--spin) * -10deg)) scale(0.97); }
-  100% { transform: translateY(0) rotate(0deg) scale(1); }
+  0% { opacity: 0; transform: rotate(calc(var(--spin) * -360deg)) scale(0.7); }
+  30% { opacity: 1; }
+  100% { transform: rotate(0deg) scale(1); }
 }
 
 .high-roll-cycle::after {
@@ -147,16 +155,10 @@
 }
 @keyframes d20-flicker {
   0% { --roll: 7; }
-  8% { --roll: 15; }
-  16% { --roll: 2; }
-  24% { --roll: 19; }
-  32% { --roll: 11; }
+  20% { --roll: 15; }
   40% { --roll: 4; }
-  48% { --roll: 17; }
-  56% { --roll: 9; }
-  66% { --roll: 13; }
-  78% { --roll: 6; }
-  90% { --roll: 18; opacity: 1; }
+  60% { --roll: 11; }
+  80% { --roll: 18; opacity: 1; }
   100% { --roll: 18; opacity: 0; }
 }
 .high-roll-cycle::after,
@@ -168,7 +170,7 @@
   animation: d20-land 260ms cubic-bezier(0.2, 0.9, 0.3, 1.4) var(--reveal) both;
 }
 @keyframes d20-land {
-  from { opacity: 0; transform: scale(1.6); }
+  from { opacity: 0; transform: scale(1.25); }
   to { opacity: 1; transform: scale(1); }
 }
 
@@ -185,21 +187,27 @@
   to { opacity: 0.45; }
 }
 
-.high-roll.is-winner::before,
-.high-roll.is-winner::after {
+/* The ring sits on the seat with its corner radii (see frameRadii), so it
+   follows the display's curve instead of being clipped by it. */
+.high-roll-frame {
+  --reveal: 1200ms;
+}
+.high-roll-frame::before,
+.high-roll-frame::after {
   content: '';
   position: absolute;
   inset: 0;
-  box-shadow: inset 0 0 0 4px #fff, inset 0 0 60px 10px rgb(255 255 255 / 0.5);
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 4px #fff, inset 0 0 48px 6px rgb(255 255 255 / 0.35);
   animation: fade-in 250ms ease-out var(--reveal) both;
 }
-.high-roll.is-winner::after {
+.high-roll-frame::after {
   box-shadow: inset 0 0 0 4px #fff;
-  animation: spotlight-pulse 1100ms ease-out calc(var(--reveal) + 250ms) infinite both;
+  animation: spotlight-pulse 1200ms ease-out calc(var(--reveal) + 250ms) 2 both;
 }
 @keyframes spotlight-pulse {
-  from { opacity: 1; box-shadow: inset 0 0 0 4px #fff; }
-  to { opacity: 0; box-shadow: inset 0 0 0 28px #fff; }
+  from { opacity: 0.8; box-shadow: inset 0 0 0 4px #fff; }
+  to { opacity: 0; box-shadow: inset 0 0 0 20px #fff; }
 }
 
 /* LAYOUT MORPH (View Transitions) */

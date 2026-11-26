@@ -352,7 +352,10 @@ const highRollOverlay = (
           h.DataAttribute('winner', String(isWinner)),
           h.Class(
             cn(
-              'high-roll pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-[3cqmin] bg-black/80 text-white backdrop-blur-xl',
+              // Opaque, so the panel underneath never shows through. The seat
+              // behind is painted the same tint (.is-rolling) so no sliver of
+              // the player's color shows at the edges either.
+              'high-roll pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-[3cqmin] bg-[color-mix(in_oklab,var(--player),black_80%)] text-white',
               isWinner ? 'is-winner' : 'is-loser',
             ),
           ),
@@ -400,6 +403,44 @@ const highRollOverlay = (
 
 const CORNER = '1.6rem'
 
+/** The display's own corner radius, approximated by the top safe-area
+ *  inset: they track each other closely across iPhones (62pt on an
+ *  iPhone 17). Where there is no inset the screen is treated as square. */
+const SCREEN_CORNER = 'env(safe-area-inset-top, 0px)'
+
+/** Like cornerRadii, but corners on the screen edge follow the display's
+ *  curve, so an outline drawn along the seat's edge is never cut off. */
+const frameRadii = (edges: Edges) => ({
+  borderTopLeftRadius: edges.top && edges.left ? SCREEN_CORNER : CORNER,
+  borderTopRightRadius: edges.top && edges.right ? SCREEN_CORNER : CORNER,
+  borderBottomRightRadius: edges.bottom && edges.right ? SCREEN_CORNER : CORNER,
+  borderBottomLeftRadius: edges.bottom && edges.left ? SCREEN_CORNER : CORNER,
+})
+
+/** The winner's spotlight ring, drawn on the seat itself (not the rotated
+ *  panel) so it can follow the seat's corners. */
+const highRollFrame = (
+  model: Model,
+  player: Player,
+  edges: Edges,
+  h: HtmlBuilder<Message>,
+): Html =>
+  Option.match(model.maybeHighRoll, {
+    onNone: () => h.empty,
+    onSome: highRoll =>
+      highRoll.winnerId === player.id
+        ? h.keyed('div')(
+            `high-roll-frame-${highRoll.seq}`,
+            [
+              h.AriaHidden(true),
+              h.Class('high-roll-frame pointer-events-none absolute inset-0 z-10'),
+              h.Style(frameRadii(edges)),
+            ],
+            [],
+          )
+        : h.empty,
+  })
+
 /** Round a corner only where it meets another seat; corners on the screen
  *  edge are left square so the display's own curve shapes them. */
 const cornerRadii = (edges: Edges) => ({
@@ -442,7 +483,13 @@ const seatView = (
     [
       h.AriaLabel(player.name),
       h.DataAttribute('testid', `seat-${player.id}`),
-      h.Class(cn('seat relative overflow-hidden [container-type:size]', isOut && 'is-out')),
+      h.Class(
+        cn(
+          'seat relative overflow-hidden [container-type:size]',
+          isOut && 'is-out',
+          Option.isSome(model.maybeHighRoll) && 'is-rolling',
+        ),
+      ),
       h.Style({
         gridArea: seatArea,
         '--player': player.color,
@@ -455,10 +502,10 @@ const seatView = (
       // screen corners.
       h.div(
         [
-          h.Class('player-surface absolute left-1/2 top-1/2 [container-type:size]'),
+          h.Class('player-surface absolute left-1/2 top-1/2'),
           h.Style(facing(rotation)),
         ],
-        [highRollOverlay(model, player, h)],
+        [],
       ),
       // The controls stay inside the safe area.
       h.div(
@@ -481,6 +528,17 @@ const seatView = (
           ),
         ],
       ),
+      // The high roll covers the whole seat, life total included.
+      Option.isSome(model.maybeHighRoll)
+        ? h.div(
+            [
+              h.Class('absolute left-1/2 top-1/2 z-10 [container-type:size]'),
+              h.Style(facing(rotation)),
+            ],
+            [highRollOverlay(model, player, h)],
+          )
+        : h.empty,
+      highRollFrame(model, player, edges, h),
     ],
   )
 }

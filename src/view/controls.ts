@@ -26,75 +26,76 @@ export type StepperConfig = Readonly<{
  *  reader users hear each change without losing their place. */
 export const stepper = (config: StepperConfig, h: HtmlBuilder<Message>): Html => {
   const labelId = `${config.id}-label`
+  const stepButton = (amount: -1 | 1) =>
+    h.button(
+      [
+        h.Type('button'),
+        h.AriaLabel(`${amount < 0 ? 'Decrease' : 'Increase'} ${config.label}`),
+        h.Class(button({ size: 'icon' })),
+        h.OnClick(config.onStep(amount)),
+      ],
+      [icon(amount < 0 ? 'minus' : 'plus')],
+    )
+  // The label gets its own row above the buttons, so it never runs under
+  // them in a narrow two-column grid.
   return h.div(
     [
       h.Role('group'),
       h.AriaLabelledBy(labelId),
       h.Class(
         cn(
-          'flex items-center gap-2 rounded-2xl bg-white/5 p-1.5 ring-1 ring-white/10',
+          'flex flex-col gap-1 rounded-2xl bg-white/5 p-1.5 pt-2 ring-1 ring-white/10',
           config.isWarning && 'ring-2 ring-rose-400 bg-rose-500/10',
         ),
       ),
     ],
     [
-      h.button(
+      h.span(
         [
-          h.Type('button'),
-          h.AriaLabel(`Decrease ${config.label}`),
-          h.Class(button({ size: 'icon' })),
-          h.OnClick(config.onStep(-1)),
+          h.Id(labelId),
+          h.Class(
+            'flex min-w-0 items-center justify-center gap-1 px-1 text-xs font-semibold leading-tight text-white/60',
+          ),
         ],
-        [icon('minus')],
-      ),
-      h.div(
-        [h.Class('flex min-w-0 flex-1 flex-col items-center leading-tight')],
         [
-          h.span(
-            [
-              h.Id(labelId),
-              h.Class(
-                'flex items-center gap-1 text-xs font-semibold text-white/60',
-              ),
-            ],
-            [
-              config.accentColor
-                ? h.span(
-                    [
-                      h.AriaHidden(true),
-                      h.Class('size-2.5 rounded-full ring-1 ring-white/40'),
-                      h.Style({ backgroundColor: config.accentColor }),
-                    ],
-                    [],
-                  )
-                : h.empty,
-              config.iconName ? icon(config.iconName, 'size-3.5') : h.empty,
-              h.span([h.Class('truncate')], [config.label]),
-            ],
-          ),
-          h.output(
-            [
-              h.AriaLive('polite'),
-              h.Class('text-2xl font-black tabular-nums text-white'),
-            ],
-            [String(config.value)],
-          ),
-          config.detail
+          config.accentColor
             ? h.span(
-                [h.Class('text-[11px] font-semibold text-white/50')],
-                [config.detail],
+                [
+                  h.AriaHidden(true),
+                  h.Class('size-2.5 shrink-0 rounded-full ring-1 ring-white/40'),
+                  h.Style({ backgroundColor: config.accentColor }),
+                ],
+                [],
               )
             : h.empty,
+          config.iconName ? icon(config.iconName, 'size-3.5 shrink-0') : h.empty,
+          h.span([h.Class('truncate')], [config.label]),
         ],
       ),
-      h.button(
+      h.div(
+        [h.Class('flex items-center gap-2')],
         [
-          h.Type('button'),
-          h.AriaLabel(`Increase ${config.label}`),
-          h.Class(button({ size: 'icon' })),
-          h.OnClick(config.onStep(1)),
+          stepButton(-1),
+          h.div(
+            [h.Class('flex min-w-0 flex-1 flex-col items-center leading-tight')],
+            [
+              h.output(
+                [
+                  h.AriaLive('polite'),
+                  h.Class('text-2xl font-black tabular-nums text-white'),
+                ],
+                [String(config.value)],
+              ),
+              config.detail
+                ? h.span(
+                    [h.Class('text-[11px] font-semibold text-white/50')],
+                    [config.detail],
+                  )
+                : h.empty,
+            ],
+          ),
+          stepButton(1),
         ],
-        [icon('plus')],
       ),
     ],
   )

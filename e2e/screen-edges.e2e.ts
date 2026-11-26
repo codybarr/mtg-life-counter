@@ -122,3 +122,56 @@ for (const layoutLabel of ['Face-off', 'Flanks'] as const) {
     }
   })
 }
+
+test('the player dialog clears the status bar and home indicator', async ({ page }) => {
+  await pickTwoPlayers(page, 'Face-off')
+  await page.getByTestId('life-p1').click()
+  const panel = page.getByRole('dialog').locator('div.overflow-y-auto')
+  await expect(panel).toBeVisible()
+  await page.waitForTimeout(300)
+  const found = await panel.boundingBox()
+  if (!found) throw new Error('panel not visible')
+  const { height } = viewport(page)
+  expect(found.y).toBeGreaterThanOrEqual(INSETS.top)
+  expect(found.y + found.height).toBeLessThanOrEqual(height - INSETS.bottom)
+})
+
+test('the high roll hides the life total and rings the winner along the screen curve', async ({ page }) => {
+  await pickTwoPlayers(page, 'Face-off')
+  await page.getByRole('button', { name: 'Table menu' }).click()
+  await page.getByRole('button', { name: 'High roll' }).click()
+  await expect(page.getByRole('dialog')).toBeHidden()
+
+  for (const playerId of ['p1', 'p2']) {
+    const life = await box(page, `life-${playerId}`)
+    // The overlay ignores pointers, so hit-test with them switched on.
+    const onTop = await page.evaluate(
+      ({ x, y }) => {
+        const overlays = [...document.querySelectorAll<HTMLElement>('.high-roll')]
+        for (const overlay of overlays) overlay.style.pointerEvents = 'auto'
+        const hit = document.elementFromPoint(x, y)?.closest('.high-roll') != null
+        for (const overlay of overlays) overlay.style.pointerEvents = ''
+        return hit
+      },
+      { x: life.x + life.width / 2, y: life.y + life.height / 2 },
+    )
+    expect(onTop, `${playerId}'s life total is above the roll`).toBe(true)
+    const background = await page
+      .getByTestId(`high-roll-${playerId}`)
+      .evaluate(element => getComputedStyle(element).backgroundColor)
+    expect(background, `${playerId}'s roll is see-through`).not.toMatch(/\/\s*0?\.\d|rgba\(.*,\s*0?\.\d+\)|transparent/)
+  }
+
+  const frame = page.locator('.high-roll-frame')
+  await expect(frame).toHaveCount(1)
+  const winner = await frame.evaluate(element => element.closest('[data-testid^=seat-]')?.getAttribute('data-testid'))
+  const style = await frame.evaluate(element => {
+    const computed = getComputedStyle(element)
+    return [computed.borderTopLeftRadius, computed.borderBottomLeftRadius]
+  })
+  // The winner's screen-edge corners follow the display (the top inset);
+  // the corners facing the other seat keep the seat's own radius.
+  const [screenSide, innerSide] = winner === 'seat-p2' ? style : [...style].reverse()
+  expect(screenSide).toBe(`${INSETS.top}px`)
+  expect(innerSide).not.toBe(`${INSETS.top}px`)
+})
