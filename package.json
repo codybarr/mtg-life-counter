@@ -1,0 +1,44 @@
+{
+  "name": "mtg-life-counter",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --bun vite",
+    "build": "bun --bun vite build",
+    "preview": "bun --bun vite preview",
+    "typecheck": "bun check",
+    "test": "bun test",
+    "test:e2e": "playwright test",
+    "icons": "bun scripts/icons.ts && bun scripts/icons-png.ts",
+    "deploy": "alchemy deploy --stage prod",
+    "deploy:preview": "alchemy deploy --stage preview",
+    "destroy": "alchemy destroy --stage prod",
+    "destroy:preview": "alchemy destroy --stage preview"
+  },
+  "devDependencies": {
+    "@alchemy.run/cloudflare": "2.0.0-beta.87",
+    "@axe-core/playwright": "^4.14.1",
+    "@effect/platform-bun": "~4.1.0",
+    "@effect/platform-node": "~4.1.0",
+    "@foldkit/vite-plugin": "0.29.1",
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/vite": "4.3.5",
+    "@types/bun": "latest",
+    "alchemy": "2.0.0-beta.87",
+    "tailwindcss": "^4.3.5",
+    "vite": "8.3.8"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  },
+  "dependencies": {
+    "@awesome.me/webawesome": "^3.15.0",
+    "@effect/platform-browser": "~4.1.0",
+    "@foldkit/ui": "^0.171.0",
+    "@tabler/icons": "^3.53.0",
+    "class-variance-authority": "^0.7.1",
+    "effect": "^4.1.5",
+    "foldkit": "^0.171.0",
+    "tailwind-merge": "^3.7.1"
+  }
+}

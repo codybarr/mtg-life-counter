@@ -1,0 +1,223 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --animate-chip-in: chip-in 240ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  --animate-fade-in: fade-in 300ms ease-out both;
+  --animate-dice: dice-roll 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes chip-in {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes dice-roll {
+    0% { opacity: 0; transform: scale(0.3) rotate(-540deg); }
+    70% { opacity: 1; transform: scale(1.15) rotate(15deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    background: #000;
+    color: #fff;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* iOS 26 home-screen apps start with a viewport that is short by the
+     status bar whenever the document is no taller than it, leaving a dead
+     black band at the bottom. Growing the document (not a fixed element,
+     which WebKit still clips) makes the viewport expand to the screen. */
+  @media (display-mode: standalone) {
+    html {
+      min-height: min(100lvh, calc(100% + env(safe-area-inset-top, 0px)));
+    }
+  }
+  [tabindex='-1']:focus {
+    outline: none;
+  }
+  button {
+    cursor: pointer;
+  }
+}
+
+/* TABLE */
+
+.table-grid {
+  padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right))
+    max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  /* Taps and holds are the only gestures on the table: no scroll, no
+     double-tap zoom, no pinch. Dialogs stay zoomable. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.seat {
+  background: var(--player);
+  transition: background-color 400ms ease;
+}
+
+.player-surface {
+  background:
+    radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--player), white 18%) 0%, transparent 60%),
+    radial-gradient(90% 70% at 50% 110%, color-mix(in oklab, var(--player), black 40%) 0%, transparent 70%),
+    var(--player);
+  transition: filter 500ms ease, background 400ms ease;
+}
+
+.player-surface.is-out {
+  filter: grayscale(0.85) brightness(0.6);
+}
+
+.life-zone {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+/* Each life change remounts the number (it is keyed by value), replaying a
+   pop in the direction of the change. */
+.life-total {
+  display: inline-block;
+  animation: life-pop 280ms cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.18);
+}
+.life-total[data-trend='up'] { --from-y: 7%; }
+.life-total[data-trend='down'] { --from-y: -7%; }
+.life-total[data-trend='none'] { animation: none; }
+
+@keyframes life-pop {
+  from { transform: translateY(var(--from-y, 0)) scale(0.9); opacity: 0.6; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* HIGH ROLL
+   The die tumbles for 1200ms (HIGH_ROLL_REVEAL_MS) while its face flickers
+   through numbers, then lands on the real roll. The winner's panel lights up
+   and everyone else's dims. */
+
+@property --roll {
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 1;
+}
+
+.high-roll {
+  --reveal: 1200ms;
+  animation: fade-in 200ms ease-out both;
+}
+
+.high-roll-die {
+  animation: d20-tumble var(--reveal) cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+.high-roll-number {
+  text-shadow: 0 0 6px rgb(0 0 0 / 0.9), 0 0 2px rgb(0 0 0);
+}
+.high-roll-die svg {
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+@keyframes d20-tumble {
+  0% { opacity: 0; transform: translateY(-30%) rotate(calc(var(--spin) * -900deg)) scale(0.35); }
+  55% { opacity: 1; transform: translateY(4%) rotate(calc(var(--spin) * 25deg)) scale(1.08); }
+  75% { transform: translateY(-2%) rotate(calc(var(--spin) * -10deg)) scale(0.97); }
+  100% { transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+.high-roll-cycle::after {
+  content: counter(roll);
+  counter-reset: roll var(--roll);
+  animation: d20-flicker var(--reveal) both;
+}
+@keyframes d20-flicker {
+  0% { --roll: 7; }
+  8% { --roll: 15; }
+  16% { --roll: 2; }
+  24% { --roll: 19; }
+  32% { --roll: 11; }
+  40% { --roll: 4; }
+  48% { --roll: 17; }
+  56% { --roll: 9; }
+  66% { --roll: 13; }
+  78% { --roll: 6; }
+  90% { --roll: 18; opacity: 1; }
+  100% { --roll: 18; opacity: 0; }
+}
+.high-roll-cycle::after,
+.high-roll-cycle {
+  animation-timing-function: steps(1, end);
+}
+
+.high-roll-final {
+  animation: d20-land 260ms cubic-bezier(0.2, 0.9, 0.3, 1.4) var(--reveal) both;
+}
+@keyframes d20-land {
+  from { opacity: 0; transform: scale(1.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.high-roll-caption {
+  animation: fade-in 300ms ease-out var(--reveal) both;
+}
+
+.high-roll.is-loser .high-roll-die {
+  animation:
+    d20-tumble var(--reveal) cubic-bezier(0.2, 0.8, 0.25, 1) both,
+    d20-dim 400ms ease-out var(--reveal) forwards;
+}
+@keyframes d20-dim {
+  to { opacity: 0.45; }
+}
+
+.high-roll.is-winner::before,
+.high-roll.is-winner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 4px #fff, inset 0 0 60px 10px rgb(255 255 255 / 0.5);
+  animation: fade-in 250ms ease-out var(--reveal) both;
+}
+.high-roll.is-winner::after {
+  box-shadow: inset 0 0 0 4px #fff;
+  animation: spotlight-pulse 1100ms ease-out calc(var(--reveal) + 250ms) infinite both;
+}
+@keyframes spotlight-pulse {
+  from { opacity: 1; box-shadow: inset 0 0 0 4px #fff; }
+  to { opacity: 0; box-shadow: inset 0 0 0 28px #fff; }
+}
+
+/* LAYOUT MORPH (View Transitions) */
+
+::view-transition-group(*) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.3, 0.9, 0.2, 1);
+}
+
+/* WEB AWESOME */
+
+.color-picker {
+  --grid-width: 16rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::view-transition-group(*) {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

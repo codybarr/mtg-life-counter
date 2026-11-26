@@ -1,0 +1,17 @@
+# TypeScript 7 is the native (Go) compiler: it ships no tsserver.js, so
+# typescript-language-server can't start. Its tsc speaks LSP directly.
+[language-server.tsc]
+command = "node_modules/.bin/tsc"
+args = ["--lsp", "--stdio"]
+
+[[language]]
+name = "typescript"
+language-servers = ["tsc"]
+
+[[language]]
+name = "tsx"
+language-servers = ["tsc"]
+
+[[language]]
+name = "javascript"
+language-servers = ["tsc"]

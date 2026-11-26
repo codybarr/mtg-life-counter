@@ -1,0 +1,8 @@
+#:schema https://pitchfork.jdx.dev/schema.json
+
+# Vite dev server. `mise run start` / `mise run stop` wrap these.
+[daemons.dev]
+run = "bun run dev"
+mise = true
+ready_http = { url = "http://localhost:3000/", timeout = "30s" }
+retry = 2

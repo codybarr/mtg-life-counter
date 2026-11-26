@@ -1,0 +1,19 @@
+[tools]
+bun = "1.4.5"
+pitchfork = "2.36.0"
+
+[tasks.start]
+description = "Start the Vite dev server in the background (http://localhost:3000)"
+run = "pitchfork start dev"
+
+[tasks.stop]
+description = "Stop the background dev server"
+run = "pitchfork stop dev"
+
+[tasks.logs]
+description = "Tail the dev server logs"
+run = "pitchfork logs dev"
+
+[tasks.deploy]
+description = "Deploy to production (Cloudflare via Alchemy)"
+run = "bun run deploy --yes"
